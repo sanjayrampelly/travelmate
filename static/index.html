@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelMate</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #1a1a1a; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  p.subtitle { color: #666; margin-top: 0; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 24px 0; }
+  label { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px; }
+  input { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; }
+  .full-width { grid-column: 1 / -1; }
+  button { grid-column: 1 / -1; padding: 12px; background: #1a56db; color: white; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+  button:disabled { background: #999; cursor: not-allowed; }
+  #result { margin-top: 24px; white-space: pre-wrap; line-height: 1.5; background: #f7f7f8; padding: 16px; border-radius: 8px; display: none; }
+  #error { margin-top: 24px; color: #b91c1c; background: #fee2e2; padding: 12px; border-radius: 8px; display: none; }
+  #loading { margin-top: 16px; color: #666; display: none; }
+</style>
+</head>
+<body>
+
+<h1>TravelMate</h1>
+<p class="subtitle">Multi-agent trip planner — flight, hotel, and weather, stitched into an itinerary.</p>
+
+<form id="tripForm">
+  <div>
+    <label>Origin airport (IATA)</label>
+    <input type="text" id="origin" maxlength="3" placeholder="BLR" required>
+  </div>
+  <div>
+    <label>Destination city</label>
+    <input type="text" id="destination" placeholder="Goa" required>
+  </div>
+  <div>
+    <label>Destination airport (IATA)</label>
+    <input type="text" id="destination_airport" maxlength="3" placeholder="GOI" required>
+  </div>
+  <div>
+    <label>Travelers</label>
+    <input type="number" id="travelers" min="1" max="20" value="1" required>
+  </div>
+  <div>
+    <label>Departure date</label>
+    <input type="date" id="departure_date" required>
+  </div>
+  <div>
+    <label>Return date</label>
+    <input type="date" id="return_date" required>
+  </div>
+  <button type="submit" id="submitBtn">Plan my trip</button>
+</form>
+
+<div id="loading">Planning your trip — this calls flight, hotel, and weather agents, then generates your itinerary...</div>
+<div id="error"></div>
+<div id="result"></div>
+
+<script>
+const form = document.getElementById('tripForm');
+const submitBtn = document.getElementById('submitBtn');
+const loadingEl = document.getElementById('loading');
+const errorEl = document.getElementById('error');
+const resultEl = document.getElementById('result');
+
+const API_BASE = 'http://127.0.0.1:8080';
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  errorEl.style.display = 'none';
+  resultEl.style.display = 'none';
+  loadingEl.style.display = 'block';
+  submitBtn.disabled = true;
+
+  const payload = {
+    origin: document.getElementById('origin').value.toUpperCase(),
+    destination: document.getElementById('destination').value,
+    destination_airport: document.getElementById('destination_airport').value.toUpperCase(),
+    departure_date: document.getElementById('departure_date').value,
+    return_date: document.getElementById('return_date').value,
+    travelers: parseInt(document.getElementById('travelers').value, 10),
+  };
+
+  try {
+    const resp = await fetch(`${API_BASE}/plan-trip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(data.detail || 'Something went wrong');
+    }
+
+    resultEl.textContent = data.final_response;
+    resultEl.style.display = 'block';
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.style.display = 'block';
+  } finally {
+    loadingEl.style.display = 'none';
+    submitBtn.disabled = false;
+  }
+});
+</script>
+
+</body>
+</html>
